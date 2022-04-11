@@ -12,21 +12,25 @@ def get_config():
     bus = smbus2.SMBus(port)
 
     calibration_params = bme280.load_calibration_params(bus, address)
+    logger.info('Configuration: ', bus, address, calibration_params)
+    return {'bus':bus, 'address':address, 'calibration_params':calibration_params}
 
-    return [bus, address, calibration_params]
-
-def read_bme280(config=[]) :
+def read_bme280(**config) :
 
     # the sample method will take a single reading and return a
     # compensated_reading object
-    data = bme280.sample(*config)
-    outputs = [data.timestamp, data.temperature, data.humidity, data.pressure]
+    bus = config['bus']
+    address = config['address']
+    calibration_params = config['calibration_params']
+    data = bme280.sample(bus, address, calibration_params)
+    outputs = {'time':data.timestamp, 'temperature':data.temperature}
     logger.info(data)
     return outputs
 
 if __name__ == '__main__' :
     # main()
     # send_secure_mail()
+    # TODO: test with Raspberry Pi
     name = 'Raspberry Pi'
     logger.info(name)
     
