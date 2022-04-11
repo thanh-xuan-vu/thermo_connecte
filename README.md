@@ -29,3 +29,10 @@ pip list
 ```bash
 pip install -r requirements:txt
 ```
+
+## Lancer le code 
+1. Activer l'environement 
+```bash
+source env/bin/activate
+```
+2. Lancer le code 
