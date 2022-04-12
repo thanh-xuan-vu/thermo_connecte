@@ -93,30 +93,32 @@ N/B : ceci est un message automatique, merci de ne pas répondre directement. Vo
     message['To'] = receiver_email
     return {'raw': base64.urlsafe_b64encode(message.as_string().encode()).decode()}
 
-def main() :
+def main(sensor_name=None, address=0x77, max_temperature=20, pause_time=60) :
+    
+    if not sensor_name: sensor_name = 'Raspberry Pi Test'
 
     # TODO: get periodical sensor information 
-    # config = get_temperature.get_config()
-    # while True :
-    #     outputs = get_temperature.read_bme280(config)
-    #     if outputs['temperature'] >= max_temperature :
-    #         logger.warning(f'{outputs[0]} : Current temperature ({outputs[1]}°C) is higher than normal ({max_temperature}°C).')
-    #         send_less_secure_mail()
-    #     sleep(pause_time)
+    config = get_temperature.get_config(address)
+    while True :
+        outputs = get_temperature.read_bme280(config)
+        temperature = outputs['temperature']
+        if temperature >= max_temperature :
+            logger.warning(f'{outputs[0]} : Current temperature ({outputs[1]}°C) is higher than normal ({max_temperature}°C).')
+            time = outputs['time'].strftime("%Y-%m-%d %H:%M:%S")
 
-    temperature = 20
-    time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    sensor_name = 'Raspberry Pi Test'
+            # Send email
+            sender_email = 'thermometre.connecte@lacoopsurmer.fr'
+            receiver_email = 'thermometre.connecte@lacoopsurmer.fr' 
+            # TODO: change sender and receiver
+            message = create_message(sender_email, receiver_email, sensor_name=sensor_name, 
+                        sensor_data={'temperature': temperature, 'time': time},
+                        max_temperature=10)
+            # TODO: ping server, if it doesn't work, and error in pi occurs, send email to inform about these events
+            send_secure_gmail(message)
+            logger.info(f'De {sender_email}')
+            logger.info(f'A {receiver_email}')
+        sleep(pause_time)
 
-    # Send email
-    sender_email = 'thermometre.connecte@lacoopsurmer.fr'
-    receiver_email = 'thermometre.connecte@lacoopsurmer.fr' 
-    # TODO: change sender and receiver
-    message = create_message(sender_email, receiver_email, sensor_name=sensor_name, 
-                sensor_data={'temperature': temperature, 'time': time},
-                max_temperature=10)
-
-    send_secure_gmail(message)
 
 if __name__ == '__main__' :
     main()
