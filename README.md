@@ -14,25 +14,23 @@ Pour réaliser ce projet, on va utiliser
 - Des boitiers pour le Raspberry Pi et le capteur
 
 ## Installation
-1. Installer pip3 et [virtualenv](https://raspberrypi-aa.github.io/session4/venv.html)
+0. Installer git et clone le package
+```bash
+sudo apt install git
+git clone https://github.com/thanh-xuan-vu/thermo_connecte.git
+```
+1. Installer pip3 
 ```bash
 sudo apt install pip3
-sudo apt install python3-virtualenv
-```
-Créer un environement virtuel pour lancer le code et l'activer. 
-```bash
-virtualenv env
-source env/bin/activate
-pip list
+pip3 list
 ```
 2. Installer Python3 et les bibliothèques dans requirements.txt
 ```bash
-pip install -r requirements:txt
+pip3 install -r requirements:txt
 ```
-
 ## Lancer le code 
-1. Activer l'environement 
+Se positionner dans le répertoire thermo_connecte qu'on vient d'installer.
 ```bash
-source env/bin/activate
+cd thermo_connecte
+python3 -m src.send_email
 ```
-2. Lancer le code 
