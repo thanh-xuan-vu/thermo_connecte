@@ -100,7 +100,7 @@ def main(sensor_name=None, address=0x77, max_temperature=20, pause_time=60) :
     # TODO: get periodical sensor information 
     config = get_temperature.get_config(address)
     while True :
-        outputs = get_temperature.read_bme280(config)
+        outputs = get_temperature.read_bme280(**config)
         temperature = outputs['temperature']
         if temperature >= max_temperature :
             logger.warning(f'{outputs[0]} : Current temperature ({outputs[1]}°C) is higher than normal ({max_temperature}°C).')
