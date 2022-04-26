@@ -3,13 +3,10 @@ import bme280
 import smbus2
 import time
 import logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s:%(name)s:%(levelname)s:%(message)s')
 logger = logging.getLogger(__name__)
 
-def get_config(address=None):
+def get_config(address=0x77):
     port = 1
-    if not address : 
-        address = 0x77  # TODO: verify this address with i2cdetect -y 1 in terminal
     bus = smbus2.SMBus(port)
     time.sleep(1)
     
@@ -25,7 +22,7 @@ def read_bme280(**config) :
     address = config['address']
     calibration_params = config['calibration_params']
     data = bme280.sample(bus, address, calibration_params)
-    outputs = {'time':data.timestamp, 'temperature':round(data.temperature, ndigits=1)}
+    outputs = {'time':data.timestamp.strftime("%Y-%m-%d %H:%M:%S"), 'temperature':round(data.temperature, ndigits=1)}
     logger.info(outputs)
     return outputs
 
