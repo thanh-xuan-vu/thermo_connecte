@@ -12,7 +12,8 @@ area_3 = st.empty()
 
 
 while True :
-    t1 = 11
+    import random
+    t1 = random.choice((1,2,3,5,12))
     alert1 = 10
     unit = '°C'
 
@@ -64,4 +65,4 @@ while True :
         il faut chercher à le résoudre dès que possible.
         '''
     )
-    time.sleep(600)
+    time.sleep(3)
