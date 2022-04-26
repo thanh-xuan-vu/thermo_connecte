@@ -1,0 +1,85 @@
+from datetime import datetime
+import json
+from time import sleep
+from src import get_temperature
+from src.send_email import create_email
+from src.send_email import send_secure_gmail
+from src.send_chat import create_message, send_chat
+
+import logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s:  %(levelname)s  :%(name)s: %(message)s')
+logger = logging.getLogger(__name__)
+
+
+def main_email(sensor_name=None, address=0x77, max_temperature=20, pause_time=60) :
+
+    sensor_name, address, max_temperature, pause_time, _ = parse_opts()
+    # get periodical sensor information 
+    config = get_temperature.get_config(address)
+    while True :
+        outputs = get_temperature.read_bme280(**config)
+        temperature = outputs['temperature']
+        if temperature >= max_temperature :
+            time = outputs['time']
+            logger.warning(f'{time} : Current temperature ({temperature}°C) is higher than normal ({max_temperature}°C).')
+
+            # Send email
+            sender_email = 'thermometre.connecte@lacoopsurmer.fr'
+            receiver_email = 'thermometre.connecte@lacoopsurmer.fr' 
+            # TODO: change sender and receiver
+            message = create_email(sender_email, 
+                        receiver_email, 
+                        sensor_name=sensor_name, 
+                        sensor_data={'temperature': temperature, 'time': time},
+                        max_temperature=max_temperature)
+            send_secure_gmail(message)
+            logger.info(f'De {sender_email}')
+            logger.info(f'A {receiver_email}')
+        sleep(pause_time)
+            # TODO: send data to server 
+
+def main(sensor_name=None, address=0x77, max_temperature=20, pause_time=60) :
+    sensor_name, address, max_temperature, pause_time, url = parse_opts()
+
+    # get periodical sensor information 
+    try : 
+        config = get_temperature.get_config(address) 
+    except : config = None 
+
+    while True :
+        if config :
+            outputs = get_temperature.read_bme280(**config) 
+        else :
+            logger.error('Cannot connect to sensor')
+            outputs = {'time':datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 'temperature':None}
+        temperature = outputs['temperature']
+
+        # TODO: send info to googl sheet
+
+        if  temperature is not None and temperature >= max_temperature :
+            time = outputs['time']
+            logger.warning(f'{time} : Current temperature ({temperature}°C) is higher than normal ({max_temperature}°C).')
+            message = create_message(sensor_name=sensor_name, 
+                        sensor_data={'temperature': temperature, 'time': time},
+                        max_temperature=max_temperature)
+            send_chat(message, url)
+            logger.info('Message envoyé au group chat.')
+        sleep(pause_time)
+
+def parse_opts(fp='token/config.json'):
+    # parse config 
+    try : 
+        with open(fp, 'r') as fn :
+            opts = json.load(fn)
+            logger.info(opts)
+        sensor_name = opts['sensor_name']
+        address = opts['address']
+        max_temperature = opts['max_temperature']
+        pause_time = opts['pause_time']
+        url = opts['groupe_chat_webhook']
+    except FileExistsError as e :
+        logger.error(e)
+    return sensor_name,address,max_temperature,pause_time,url
+
+if __name__ == '__main__' :
+    main()
