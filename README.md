@@ -1,10 +1,10 @@
 # Thermomètre connecté
 ## Introduction
 L'objective du projet : 
-- Prendre de la température des frigos automatiquement à l'aide des Raspberry Pi
-- Signaler si la température dépasse un seuil prédéfini (par mél, ou message)
-- Créer une interface web pour monitor et surveiller l'emsemble des thermomètres.
-- Signaler tout arrêt de fonctionement 
+- Prendre de la température des frigos automatiquement à l'aide des Raspberry Pi.
+- Signaler si la température dépasse un seuil prédéfini (par mél, ou message).
+- Signaler tout arrêt de fonctionement.
+- Créer une interface web pour monitor et surveiller l'emsemble des thermomètres. (optionel)
 
 ## Equipement
 Pour réaliser ce projet, on va utiliser 
@@ -26,11 +26,11 @@ pip3 list
 ```
 2. Installer Python3 et les bibliothèques dans requirements.txt
 ```bash
-pip3 install -r requirements:txt
+pip3 install -r requirements.txt
 ```
 ## Lancer le code 
 Se positionner dans le répertoire thermo_connecte qu'on vient d'installer.
 ```bash
 cd thermo_connecte
-python3 -m src.send_email
+python3 -m src.main
 ```
