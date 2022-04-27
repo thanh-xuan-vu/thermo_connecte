@@ -5,6 +5,7 @@ from src import get_temperature
 # from src.send_email import create_email
 # from src.send_email import send_secure_gmail
 from src.send_chat import create_message, send_chat
+from src.update_sheet import update_sheet
 
 import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s:  %(levelname)s  :%(name)s: %(message)s')
@@ -59,17 +60,28 @@ def main() :
             outputs = {'time':datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 'temperature':None}
         
         temperature = outputs['temperature']
+        time = outputs['time']
 
-        # TODO: send info to googl sheet
-        # temperature too high, send a chat message
-        if temperature >= max_temperature and temperature is not None :
-            time = outputs['time']
+        # temperature normal, update google sheet
+        if temperature < max_temperature and temperature is not None :
+            update_sheet(idx=sensor_name, value=[[sensor_name, str(temperature), str(max_temperature), time.strftime("%Y-%m-%d"), time.strftime("%H:%M:%S"), 'OK']]) 
+
+        # temperature too high, send a chat message, update google sheet
+        elif temperature >= max_temperature and temperature is not None :
             logger.warning(f'{time} : Current temperature ({temperature}°C) is higher than normal ({max_temperature}°C).')
             message = create_message(sensor_name=sensor_name,
                         sensor_data={'temperature': temperature, 'time': time},
                         max_temperature=max_temperature)
             send_chat(message, url)
             logger.info('Message sent to group chat.')
+            # send info to google sheet
+            update_sheet(idx=sensor_name, value=[[sensor_name, str(temperature), str(max_temperature), time.strftime("%Y-%m-%d"), time.strftime("%H:%M:%S"), 'Température élevée']]) 
+
+        # sensor not connected, update google sheet
+        elif temperature is None :
+            # TODO: send chat message
+            update_sheet(idx=sensor_name, value=[[sensor_name, str(temperature), str(max_temperature), time.strftime("%Y-%m-%d"), time.strftime("%H:%M:%S"), 'Pas de connexion au capteur']]) 
+
         sleep(pause_time)
 
 def parse_opts(fp='token/config.json'):
