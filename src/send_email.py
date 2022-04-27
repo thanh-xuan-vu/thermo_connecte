@@ -20,26 +20,7 @@ SCOPES = ['https://mail.google.com/']
 def send_secure_gmail(message):
     """Send secure email with Gmail API.    """
 
-    creds = None
-    # The file token.json stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
-    
-    token_fp = 'token/token.json'
-    if os.path.exists(token_fp):
-        creds = Credentials.from_authorized_user_file(token_fp, SCOPES)
-    
-    # If there are no (valid) credentials available, let the user log in.
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                'token/credentials.json', SCOPES)
-            creds = flow.run_local_server(port=0)
-        # Save the credentials for the next run
-        with open(token_fp, 'w') as token:
-            token.write(creds.to_json())
+    creds = get_creds()
 
     try:
         # Call the Gmail API
@@ -50,6 +31,29 @@ def send_secure_gmail(message):
         return message
     except Exception as error:
         logger.error(error)
+
+def get_creds(scopes=SCOPES):
+    creds = None
+    # The file token.json stores the user's access and refresh tokens, and is
+    # created automatically when the authorization flow completes for the first
+    # time.
+    
+    token_fp = 'token/token.json'
+    if os.path.exists(token_fp):
+        creds = Credentials.from_authorized_user_file(token_fp, scopes)
+    
+    # If there are no (valid) credentials available, let the user log in.
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                'token/credentials.json', scopes)
+            creds = flow.run_local_server(port=0)
+        # Save the credentials for the next run
+        with open(token_fp, 'w') as token:
+            token.write(creds.to_json())
+    return creds
 
     # TODO: add guide to forward port in first time authentication 
     # ssh -N -L localhost:port_number:localhost:port_number raspberrypi_ip
