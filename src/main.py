@@ -79,7 +79,11 @@ def main() :
 
         # sensor not connected, update google sheet
         elif temperature is None :
-            # TODO: send chat message
+            # send chat message
+            logger.warning(f'{time} : No signal from sensor.')
+            message = {'text': f'<users/all> *Frigo {sensor_name}* : pas de connexion entre le capteur et le Raspberry pi.'}
+            logger.info('Message sent to group chat.')
+            # send info to google sheet
             update_sheet(idx=sensor_name, value=[[sensor_name, str(temperature), str(max_temperature), time.strftime("%Y-%m-%d"), time.strftime("%H:%M:%S"), 'Pas de connexion au capteur']]) 
 
         sleep(pause_time)
