@@ -2,16 +2,39 @@ from src.send_email import get_creds
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+import json
+import logging 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 # If modifying these scopes, delete the file token.json.
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-SPREADSHEET_ID = "1z9GsrI7ARmHv7rM6CXzICWbeAwHZpzUeSbuoZiGZn1k"
-FRIGO_IDX = 3
-SHEET_TITLE = str(FRIGO_IDX)
+# SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+# spreadsheet_id = "1z9GsrI7ARmHv7rM6CXzICWbeAwHZpzUeSbuoZiGZn1k"
 
-def update_sheet(idx=FRIGO_IDX, value=[[SHEET_TITLE, '10', '15', 'today', 'now', 'OK']]) :
-    creds = get_creds(scopes=SCOPES)
+def parse_opts(fp='token/config.json'):
+    # parse config 
+    try : 
+        with open(fp, 'r') as fn :
+            opts = json.load(fn)
+            logger.info(opts)
+            return opts
+    except FileExistsError as e :
+        logger.error(e)
+
+def update_sheet(value=[['10', '15', 'today', 'now', 'OK']]) :
+    opts = parse_opts()
+    scopes = opts.get('scopes', None)
+    spreadsheet_id = opts.get('spreadsheet_id', None)
+    frigo_id = opts.get('sensor_name', None)
+    sheet_title = str(frigo_id)
+    value = [[str(frigo_id)] + value[0]]
+
+    if None in [scopes, spreadsheet_id, frigo_id] :
+        logger.warning('Lack scopes or spreadsheet_id or frigo_id in config file. Google sheet is not updated.')
+        return
+
+    creds = get_creds(scopes=scopes)
     try:
         service = build('sheets', 'v4', credentials=creds)
 
@@ -19,40 +42,42 @@ def update_sheet(idx=FRIGO_IDX, value=[[SHEET_TITLE, '10', '15', 'today', 'now',
         sheet = service.spreadsheets()
 
         # Update General sheet
-        response = write_sheet_row(value, sheet, 'Général', range=f'A{idx+1}:F{idx+1}')
+        response = write_sheet_row(value, sheet, 'Général', range=f'A{int(frigo_id)+1}:F{int(frigo_id)+1}', spreadsheet_id=spreadsheet_id)
 
-        sheet_metadata = sheet.get(spreadsheetId=SPREADSHEET_ID).execute()
+        sheet_metadata = sheet.get(spreadsheetId=spreadsheet_id).execute()
         sheets = sheet_metadata.get('sheets', '')
         sheet_list = [sh['properties']['title'] for sh in sheets]
         
-        if  SHEET_TITLE not in sheet_list : # Create/ Update FRIGO_IDX sheet
+        # Create frigo_id sheet if needed
+        if  sheet_title not in sheet_list : 
             body = {
                 'requests': [{
                     'addSheet': {
                         'properties': {
-                            'title': SHEET_TITLE,
+                            'title': sheet_title,
                         }
                     }
                 }]
                                     }
 
             result = sheet.batchUpdate(
-                    spreadsheetId=SPREADSHEET_ID,
+                    spreadsheetId=spreadsheet_id,
                     body=body).execute()
-            print(result)
-            response = write_sheet_row(value= [['Nom du frigogidaire', 'Température', 'Alerte', 'Date', 'Heure', 'Etat']], 
-                            sheet=sheet, sheet_name=SHEET_TITLE, range='A1:F1')
-            print(response)    
-        # update log for FRIGO_IDX
-        sheet_metadata = sheet.get(spreadsheetId=SPREADSHEET_ID).execute()
+            logger.info(f'Create sheet {sheet_title} in spreadsheet {spreadsheet_id}')
+            # Write title row
+            _ = write_sheet_row(value= [['Nom du frigogidaire', 'Température', 'Alerte', 'Date', 'Heure', 'Etat']], 
+                            sheet=sheet, sheet_name=sheet_title, range='A1:F1', spreadsheet_id=spreadsheet_id)
+
+        # update log in frigo_id sheet
+        sheet_metadata = sheet.get(spreadsheetId=spreadsheet_id).execute()
         sheets = sheet_metadata.get('sheets', '')
-        sheet_list = [sh['properties']['sheetId'] for sh in sheets if sh['properties']['title']==SHEET_TITLE]
-        SHEET_ID = sheet_list[0]
+        sheet_list = [sh['properties']['sheetId'] for sh in sheets if sh['properties']['title']==sheet_title]
+        sheet_id = sheet_list[0]
         body = { "requests": [
             {
             "deleteDimension": { # delete row 200
                 "range": {
-                "sheetId": SHEET_ID         ,
+                "sheetId": sheet_id         ,
                 "dimension": "ROWS",
                 "startIndex": 200,
                 "endIndex": 201
@@ -62,7 +87,7 @@ def update_sheet(idx=FRIGO_IDX, value=[[SHEET_TITLE, '10', '15', 'today', 'now',
             {
             "insertDimension": { # insert row 2
                 "range": {
-                "sheetId": SHEET_ID                ,
+                "sheetId": sheet_id                ,
                 "dimension": "ROWS",
                 "startIndex": 1,
                 "endIndex": 2
@@ -73,16 +98,16 @@ def update_sheet(idx=FRIGO_IDX, value=[[SHEET_TITLE, '10', '15', 'today', 'now',
             
         ]
         }
-        result = sheet.batchUpdate(
-                    spreadsheetId=SPREADSHEET_ID,
+        _ = sheet.batchUpdate(
+                    spreadsheetId=spreadsheet_id,
                     body=body).execute()
-        print(result)
-        response = write_sheet_row(value= value,  
-                            sheet=sheet, sheet_name=SHEET_TITLE, range='A2:F2') # write in row 2
+        _ = write_sheet_row(value= value,  
+                            sheet=sheet, sheet_name=sheet_title, range='A2:F2', spreadsheet_id=spreadsheet_id) # write in row 2
+        logger.info(f' Update temperature to sheet {sheet_title}')
     except HttpError as err:
-        print(err)
+        logger.error(err)
 
-def write_sheet_row(value, sheet, sheet_name, range=f'A{FRIGO_IDX+1}:F{FRIGO_IDX+1}'):
+def write_sheet_row(value, sheet, sheet_name, range='A2:F2', spreadsheet_id=None):
     body = {
             'valueInputOption': "RAW",
             'data': [
@@ -91,13 +116,13 @@ def write_sheet_row(value, sheet, sheet_name, range=f'A{FRIGO_IDX+1}:F{FRIGO_IDX
                 'values': value # [[nom_frigo, temperature, alerte, jour, heure, etat]]
             },
         ]}
-    response = sheet.values().batchUpdate(spreadsheetId=SPREADSHEET_ID,
+    response = sheet.values().batchUpdate(spreadsheetId=spreadsheet_id,
                                     body=body,
                                     ).execute()
 
     return response
 
 if __name__ == '__main__' :
-    update_sheet()
+    update_sheet(value=[['10', '15', 'today', 'now', 'Température élevée']]) # current temperature, alert tempearture, date, time, status
 
 
