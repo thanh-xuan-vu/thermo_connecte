@@ -10,9 +10,8 @@ def create_message(sensor_name='',
                 sensor_data=None, 
                 max_temperature=None) :
     msg = f'''
-    <users/all> *Alerte température* 
-    *{sensor_name}* : {sensor_data['temperature']}°C (limite à {max_temperature}°C).
-    {sensor_data['time'].strftime("%Y-%m-%d %H:%M:%S")} 
+    <users/all> *Alerte température trop élevée* 
+    *Frigo {sensor_name}* : {sensor_data['temperature']}°C (limite à {max_temperature}°C). {sensor_data['time'].strftime("%Y-%m-%d %H:%M:%S")} 
     '''
     return {'text':msg}
 
