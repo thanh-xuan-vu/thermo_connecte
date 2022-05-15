@@ -67,25 +67,30 @@ def main() :
             outputs = get_temperature.read_bme280(**pi_config) 
         else :
             logger.error('Cannot connect to sensor')
-            outputs = {'time':datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 'temperature':None}
+            outputs = {'time':datetime.now(), 'temperature':None}
         
         temperature = outputs['temperature']
         time = outputs['time']
 
         # temperature normal, update google sheet
-        if temperature < max_temperature and temperature is not None :
-            update_sheet(frigo_id=sensor_name, value=[[sensor_name, str(temperature), str(max_temperature), time.strftime("%Y-%m-%d"), time.strftime("%H:%M:%S"), 'OK']]) 
+        if temperature is not None : 
+            if temperature < max_temperature  :
+                # value to send to google sheet
+                value=[[sensor_name, str(temperature), str(max_temperature),
+                                    time.strftime("%Y-%m-%d"), time.strftime("%H:%M:%S"), 'OK']]
 
-        # temperature too high, send a chat message, update google sheet
-        elif temperature >= max_temperature and temperature is not None :
-            logger.warning(f'{time} : Current temperature ({temperature}°C) is higher than normal ({max_temperature}°C).')
-            message = create_message(sensor_name=sensor_name,
-                        sensor_data={'temperature': temperature, 'time': time},
-                        max_temperature=max_temperature)
-            send_chat(message, webhook)
-            logger.info('Message sent to group chat.')
-            # send info to google sheet
-            update_sheet(frigo_id=sensor_name, value=[[sensor_name, str(temperature), str(max_temperature), time.strftime("%Y-%m-%d"), time.strftime("%H:%M:%S"), 'Température élevée']]) 
+            # temperature too high, send a chat message, update google sheet
+            elif temperature >= max_temperature :
+                logger.warning(f'{time} : Current temperature ({temperature}°C) is higher than normal ({max_temperature}°C).')
+                message = create_message(sensor_name=sensor_name,
+                            sensor_data={'temperature': temperature, 'time': time},
+                            max_temperature=max_temperature)
+                send_chat(message, webhook)
+                logger.info('Message sent to group chat.')
+                logger.info(message)
+                # value to send to google sheet
+                value=[[sensor_name, str(temperature), str(max_temperature), 
+                                            time.strftime("%Y-%m-%d"), time.strftime("%H:%M:%S"), 'Température élevée']]
 
         # sensor not connected, update google sheet
         elif temperature is None :
@@ -93,9 +98,11 @@ def main() :
             message = {'text': f'<users/all> *Frigo {sensor_name}* : pas de connexion entre le capteur et le Raspberry pi.'}
             send_chat(message, webhook)
             logger.info('Message sent to group chat.')
-            # send info to google sheet
-            update_sheet(frigo_id=sensor_name, value=[[sensor_name, str(temperature), str(max_temperature), time.strftime("%Y-%m-%d"), time.strftime("%H:%M:%S"), 'Pas de connexion au capteur']]) 
-
+            logger.info(message)
+            value=[[sensor_name, str(temperature), str(max_temperature), 
+                                        time.strftime("%Y-%m-%d"), time.strftime("%H:%M:%S"), 'Pas de connexion au capteur']]
+        # send info to google sheet
+        update_sheet(value=value, opts=opts) 
         sleep(pause_time)
 
 if __name__ == '__main__' :
