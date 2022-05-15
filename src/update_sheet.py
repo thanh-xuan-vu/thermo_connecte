@@ -4,7 +4,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import json
 import logging 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s:  %(levelname)s  :%(name)s: %(message)s')
 logger = logging.getLogger(__name__)
 
 
@@ -17,18 +17,16 @@ def parse_opts(fp='token/config.json'):
     try : 
         with open(fp, 'r') as fn :
             opts = json.load(fn)
-            logger.info(opts)
             return opts
     except FileExistsError as e :
         logger.error(e)
 
-def update_sheet(value=[['10', '15', 'today', 'now', 'OK']]) :
-    opts = parse_opts()
+def update_sheet(value=[['Test','10', '15', 'today', 'now', 'OK']], opts=None) :
+    if not opts : opts = parse_opts()
     scopes = opts.get('scopes', None)
     spreadsheet_id = opts.get('spreadsheet_id', None)
     frigo_id = opts.get('sensor_name', None)
     sheet_title = str(frigo_id)
-    value = [[str(frigo_id)] + value[0]]
 
     if None in [scopes, spreadsheet_id, frigo_id] :
         logger.warning('Lack scopes or spreadsheet_id or frigo_id in config file. Google sheet is not updated.')
@@ -104,6 +102,8 @@ def update_sheet(value=[['10', '15', 'today', 'now', 'OK']]) :
         _ = write_sheet_row(value= value,  
                             sheet=sheet, sheet_name=sheet_title, range='A2:F2', spreadsheet_id=spreadsheet_id) # write in row 2
         logger.info(f' Update temperature to sheet {sheet_title}')
+        logger.info(' nom_frigo, temperature, alerte, jour, heure, etat : ')
+        logger.info(value)
     except HttpError as err:
         logger.error(err)
 
@@ -123,6 +123,6 @@ def write_sheet_row(value, sheet, sheet_name, range='A2:F2', spreadsheet_id=None
     return response
 
 if __name__ == '__main__' :
-    update_sheet(value=[['10', '15', 'today', 'now', 'Température élevée']]) # current temperature, alert tempearture, date, time, status
+    update_sheet(value=[['Test', '10', '15', 'today', 'now', 'Température élevée']]) # current temperature, alert tempearture, date, time, status
 
 
