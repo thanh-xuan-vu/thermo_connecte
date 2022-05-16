@@ -9,7 +9,7 @@ from src.update_sheet import update_sheet
 from src.update_sheet import parse_opts
 
 import logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s:  %(levelname)s  :%(name)s: %(message)s')
+logging.basicConfig(filename='run.log', filemode='a', level=logging.INFO, format='%(asctime)s:  %(levelname)s  :%(name)s: %(message)s')
 logger = logging.getLogger(__name__)
 
 
