@@ -32,5 +32,6 @@ pip3 install -r requirements.txt
 Se positionner dans le répertoire thermo_connecte qu'on vient d'installer.
 ```bash
 cd thermo_connecte
-python3 -m src.main
+nohup python3 -m src.main &
 ```
+Le logging se trouve dans le fichier ./run.log.
