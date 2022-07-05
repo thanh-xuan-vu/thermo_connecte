@@ -22,7 +22,7 @@ def read_bme280(**config) :
     address = config['address']
     calibration_params = config['calibration_params']
     data = bme280.sample(bus, address, calibration_params)
-    outputs = {'time':data.timestamp.strftime("%Y-%m-%d %H:%M:%S"), 'temperature':round(data.temperature, ndigits=1)}
+    outputs = {'time':data.timestamp, 'temperature':round(data.temperature, ndigits=1)}
     logger.info(outputs)
     return outputs
 

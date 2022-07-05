@@ -9,7 +9,9 @@ from src.update_sheet import update_sheet
 from src.update_sheet import parse_opts
 
 import logging
-logging.basicConfig(filename='run.log', filemode='a', level=logging.INFO, format='%(asctime)s:  %(levelname)s  :%(name)s: %(message)s')
+logging.basicConfig(
+#filename='run.log', filemode='a', 
+level=logging.INFO, format='%(asctime)s:  %(levelname)s  :%(name)s: %(message)s')
 logger = logging.getLogger(__name__)
 
 
@@ -46,6 +48,7 @@ logger = logging.getLogger(__name__)
 def main() :
     # parse parameters
     opts = parse_opts()
+    logger.info(opts)
     sensor_name = opts.get('sensor_name', None)
     address = opts.get('address', None)
     max_temperature = opts.get('max_temperature', None)
@@ -58,10 +61,11 @@ def main() :
         return
     # get pi config
     try : 
-        pi_config = get_temperature.get_config(address) 
-    except : pi_config = None 
-
-    # get periodical sensor information 
+        pi_config = get_temperature.get_config(int(address, 16)) 
+    except Exception as e : 
+        pi_config = None 
+        logger.error(e)
+    # get periodical sensor information
     while True :
         if pi_config :
             outputs = get_temperature.read_bme280(**pi_config) 
@@ -83,7 +87,7 @@ def main() :
             elif temperature >= max_temperature :
                 logger.warning(f'{time} : Current temperature ({temperature}°C) is higher than normal ({max_temperature}°C).')
                 message = create_message(sensor_name=sensor_name,
-                            sensor_data={'temperature': temperature, 'time': time},
+                            sensor_data={'temperature': temperature, 'time': time.strftime("%Y-%m-%d %H:%M:%S")},
                             max_temperature=max_temperature)
                 send_chat(message, webhook)
                 logger.info('Message sent to group chat.')
