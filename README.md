@@ -13,6 +13,13 @@ Pour réaliser ce projet, on va utiliser
 - Un cable plat pour connecter les deux 
 - Des boitiers pour le Raspberry Pi et le capteur
 
+## Se connecter au Wifi
+ssh au Raspberry Pi, ensuite ajouter les paramètres de réseau comme ceci  
+network = {
+ ssid="nomDuReseau"
+ psk="motDePasse"
+}
+
 ## Installation
 0. Installer git et clone le package
 ```bash
@@ -28,6 +35,19 @@ pip3 list
 ```bash
 pip3 install -r requirements.txt
 ```
+3. Télécharger le répertoire token sur Google drive et changer les paramètres   
+{
+    "sensor_name" : "1",
+    "address" : "0x77",
+    "max_temperature" : 20,
+    "pause_time" : NE PAS CHANGER,
+    "groupe_chat_webhook" : ,
+    "scopes" : NE PAS CHANGER,
+    "spreadsheet_id": "",
+}
+
+
+
 ## Lancer le code 
 Se positionner dans le répertoire thermo_connecte qu'on vient d'installer.
 ```bash
