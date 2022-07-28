@@ -9,8 +9,10 @@ from src.update_sheet import update_sheet
 from src.update_sheet import parse_opts
 
 import logging
+from logging.handlers import RotatingFileHandler
 logging.basicConfig(
 #filename='run.log', filemode='a', 
+handlers=[RotatingFileHandler('./run.log', maxBytes=1000000, backupCount=5)], # 5 log files max 1Mb
 level=logging.INFO, format='%(asctime)s:  %(levelname)s  :%(name)s: %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -67,10 +69,11 @@ def main() :
         logger.error(e)
     # get periodical sensor information
     while True :
-        if pi_config :
-            outputs = get_temperature.read_bme280(**pi_config) 
-        else :
+        try : 
+            outputs = get_temperature.read_bme280(**pi_config)             
+        except Exception as e :
             logger.error('Cannot connect to sensor')
+            logger.error(e)
             outputs = {'time':datetime.now(), 'temperature':None}
         
         temperature = outputs['temperature']
@@ -100,7 +103,7 @@ def main() :
         elif temperature is None :
             # send chat message
             message = {'text': f'<users/all> *Frigo {sensor_name}* : pas de connexion entre le capteur et le Raspberry pi.'}
-            send_chat(message, webhook)
+            # send_chat(message, webhook)
             logger.info('Message sent to group chat.')
             logger.info(message)
             value=[[sensor_name, str(temperature), str(max_temperature), 
