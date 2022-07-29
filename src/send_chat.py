@@ -9,8 +9,7 @@ logger = logging.getLogger(__name__)
 def create_message(sensor_name='', 
                 sensor_data=None, 
                 max_temperature=None) :
-    msg = f'''
-    <users/all> *Alerte température trop élevée* 
+    msg = f'''<users/all> *Alerte température trop élevée* 
     *Frigo {sensor_name}* : {sensor_data['temperature']}°C (limite à {max_temperature}°C). {sensor_data['time']} 
     '''
     return {'text':msg}
