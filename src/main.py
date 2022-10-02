@@ -10,9 +10,9 @@ from src.update_sheet import update_sheet, parse_opts
 import logging
 from logging.handlers import RotatingFileHandler
 logging.basicConfig(
-# filename='run.log', filemode='a', 
-handlers=[RotatingFileHandler('./run.log', maxBytes=1000000, backupCount=5)], # 5 log files max 1Mb
-level=logging.INFO, format='%(asctime)s:  %(levelname)s  :%(name)s: %(message)s')
+    # filename='run.log', filemode='a', 
+    handlers=[RotatingFileHandler('./run.log', maxBytes=1000000, backupCount=5)], # 5 log files max 1Mb
+    level=logging.INFO, format='%(asctime)s:  %(levelname)s  :%(name)s: %(message)s')
 logger = logging.getLogger(__name__)
 
 
