@@ -28,7 +28,7 @@ git clone https://github.com/thanh-xuan-vu/thermo_connecte.git
 ```
 1. Installer pip3 
 ```bash
-sudo apt install pip3
+sudo apt install python3-pip
 pip3 list
 ```
 2. Installer Python3 et les bibliothèques dans requirements.txt

@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 def create_message(sensor_name='', 
                 sensor_data=None, 
                 max_temperature=None) :
-    msg = f'''<users/all> *Alerte température trop élevée* 
-    *Frigo {sensor_name}* : {sensor_data['temperature']}°C (limite à {max_temperature}°C). {sensor_data['time']} 
+    msg = f'''<users/all> *Alerte Frigo {sensor_name} : température trop élevée* 
+    actuelle à {sensor_data['temperature']}°C, limite à {max_temperature}°C, \t {sensor_data['time']} 
     '''
     return {'text':msg}
 
@@ -21,13 +21,24 @@ def send_chat(bot_message, url) :
     message_headers = {'Content-Type': 'application/json; charset=UTF-8'}
 
     http_obj = Http()
-
-    response = http_obj.request(
-        uri=url,
-        method='POST',
-        headers=message_headers,
-        body=dumps(bot_message),
-    )
+    try :
+        response = http_obj.request(
+            uri=url,
+            method='POST',
+            headers=message_headers,
+            body=dumps(bot_message),
+        )
+        if response[0].status == 200 :
+            logger.info('Message sent to group chat.')
+            logger.info(f'Message content: {bot_message}')
+            return True
+        else : 
+            logger.error('Failed to send message to group chat')
+            return False
+        
+    except Exception as e : 
+        logger.error(f'{type(e)} {e}')
+        return False 
 
 
 if __name__ == '__main__' :
