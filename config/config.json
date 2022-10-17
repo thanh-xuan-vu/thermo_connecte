@@ -1,0 +1,7 @@
+{
+    "sensor_id" : "3", 
+    "frigo_name" : "test",
+    "max_temperature" : -10,
+    "pause_time" :10,
+    "delay" : 20
+}
