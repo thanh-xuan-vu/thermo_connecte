@@ -1,11 +1,12 @@
 #!/bin/python
+from datetime import datetime
 import bme280 
 import smbus2
 import time
 import logging
 
-from sensor import Sensor
-from parse_opts import parse_opts
+from .sensor import Sensor
+from .parse_opts import parse_opts
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +15,7 @@ class BME280(Sensor) :
     def __init__(self, config_path='config/config_bme.json') : 
         super().__init__()
         try : 
-            opts = self.parse_opts(config_path)
+            opts = parse_opts(config_path)
             self._config = self.get_config(opts.get('address', None))
         except Exception as e : 
             logger.error(f'Error reading config for BME280 sensor')
@@ -37,9 +38,13 @@ class BME280(Sensor) :
         bus = self._config['bus']
         address = self._config['address']
         calibration_params = self._config['calibration_params']
-        data = bme280.sample(bus, address, calibration_params)
-
-        outputs = {'time':data.timestamp, 'temperature':round(data.temperature, ndigits=1)}
+        try : 
+            data = bme280.sample(bus, address, calibration_params)
+            outputs = {'time':data.timestamp, 'temperature':round(data.temperature, ndigits=1)}
+        except Exception as e : 
+            logger.error('Cannot connect to sensor')
+            logger.error(e)
+            outputs = {'time':datetime.now(), 'temperature':None}
         logger.info(outputs)
         return outputs
 
