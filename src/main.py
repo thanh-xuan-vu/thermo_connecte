@@ -1,11 +1,12 @@
-from datetime import datetime, timedelta
-import random 
+from datetime import timedelta
+# import random 
 from time import sleep
-from src import get_temperature
-# from src.send_email import create_email
-# from src.send_email import send_secure_gmail
-from src.send_chat import create_message, send_chat
-from src.update_sheet import update_sheet, parse_opts
+
+from src.parse_opts import parse_opts 
+from src.sensor import Sensor
+from src.bme_sensor import BME280
+from src.notifier import AlertLevel, Notifier
+from src.google_notifier import GoogleNotifier
 
 import logging
 from logging.handlers import RotatingFileHandler
@@ -17,155 +18,124 @@ logger = logging.getLogger(__name__)
 
 
 class ThermoConnecte() : 
+    _none_state = {'status': False, 'notif_sent': False, 'first_time': None}
 
-    def __init__(self) : 
+    def __init__(self, sensor:Sensor=Sensor(), 
+                        notifier:Notifier=Notifier(), 
+                        config_path='config/config.json') : 
         # parse parameters
-        opts = parse_opts()
-        self.frigo_name = opts.get('frigo_name', None)
-        self.sensor_id = opts.get('sensor_id', None)
-        self.address = opts.get('address', None)
-
-        self.max_temperature = opts.get('max_temperature', None)
-        self.pause_time = opts.get('pause_time', None)
-        self.thermo_status = 0   # default status 
-        self.delay = opts.get('delay', self.pause_time * 2) # in second
-
-        self.webhook = opts.get('groupe_chat_webhook', None)
-        self.scopes = opts.get('scopes', None)
-
-
-
-# def main_email() :
-
-#     opts = parse_opts()      
-    # sensor_name = opts.get('sensor_name', None)
-    # address = opts.get('address', None)
-    # max_temperature = opts.get('max_temperature', None)
-    # pause_time = opts.get('pause_time', None)
-#     # get periodical sensor information 
-#     config = get_temperature.get_config(address)
-#     while True :
-#         outputs = get_temperature.read_bme280(**config)
-#         temperature = outputs['temperature']
-#         if temperature >= max_temperature :
-#             time = outputs['time']
-#             logger.warning(f'{time} : Current temperature ({temperature}°C) is higher than normal ({max_temperature}°C).')
-
-#             # Send email
-#             sender_email = 'thermometre.connecte@lacoopsurmer.fr'
-#             receiver_email = 'thermometre.connecte@lacoopsurmer.fr' 
-#             # TODO: change sender and receiver
-#             message = create_email(sender_email, 
-#                         receiver_email, 
-#                         sensor_name=sensor_name, 
-#                         sensor_data={'temperature': temperature, 'time': time},
-#                         max_temperature=max_temperature)
-#             send_secure_gmail(message)
-#             logger.info(f'De {sender_email}')
-#             logger.info(f'A {receiver_email}')
-#         sleep(pause_time)
-
-def main() :
-    # parse parameters
-    opts = parse_opts()
-    frigo_name = opts.get('frigo_name', None)
-    sensor_id = opts.get('sensor_id', None)
-    address = opts.get('address', None)
-    max_temperature = opts.get('max_temperature', None)
-    pause_time = opts.get('pause_time', 600)
-    webhook = opts.get('test_webhook', None)
-    scopes = opts.get('scopes', None)
-
-    thermo_status=0   # default status 
-    alerte_sent, alerte_connect_sent = False, False
-    tem_trigger, conn_trigger = False, False 
-    delay = opts.get('delay', pause_time * 2) # in second
-
-    # check config file
-    if None in [frigo_name, sensor_id, address, max_temperature, pause_time, webhook, scopes] : 
-        logger.error('Config file not found at token/config.json.')
-        return
-    
-      # get pi config
-    try : 
-        pi_config = get_temperature.get_config(int(address, 16)) 
-    except Exception as e : 
-        pi_config = None 
-        logger.error(e)
-        logger.warning('Failed to get Pi configuration')
-        # return 
-
-    # get periodical sensor information
-    while True :
         try : 
-            outputs = get_temperature.read_bme280(**pi_config)             
-        except Exception as e :
-            logger.error('Cannot connect to sensor')
-            logger.error(e)
-            # outputs = {'time':datetime.now(), 'temperature':None}
-            outputs = {'time':datetime.now(), 'temperature':random.choice([None, -12, -9, -9, -9,])}
-        
+            opts = parse_opts(config_path)
+            self._frigo_name = opts.get('frigo_name', None)
+            self._sensor_id = opts.get('sensor_id', None)
+            self._max_temperature = opts.get('max_temperature', None)
+            self._pause_time = opts.get('pause_time', 600)
+            self._notif_delay = opts.get('delay', self._pause_time * 2) # in second
+        except Exception as e : 
+            logger.error('Failed to parse connected thermometer config')
+            raise e
+        self._last_state = {'ok': self._none_state,
+                            'high_temp': self._none_state,
+                            'sensor_not_connected': self._none_state,
+                            }
+        self._status_long_name = {'ok': 'OK', 
+                            'high_temp': 'Température élevée',
+                            'sensor_not_connected': 'Pas de connexion au capteur',
+                            }
+        self._current_status = 'ok'
+        self.set_sensor(sensor)
+        self.set_notifier(notifier) 
+    
+    def set_sensor(self, sensor: Sensor) : 
+        self._sensor = sensor
+
+    def set_notifier(self, notifier: Notifier) :  
+        self._notifier = notifier 
+    
+    def _update(self) : 
+        outputs = self._sensor.get_temperature() 
         temperature = outputs['temperature']
-        time = outputs['time']
+        timestamp = outputs['time']
+        timestamp_date = timestamp.strftime("%Y-%m-%d")
+        timestamp_time = timestamp.strftime("%H:%M:%S")
+
         logger.info(f'Current temperature {temperature}')
 
-        # temperature normal, update google sheet
-        if temperature is not None : 
-            if temperature < max_temperature  :  # thermo_status == 0
-                logger.info(f'Status : OK (<{max_temperature}°C)') # log status 
-                if tem_trigger or conn_trigger : 
-                    # send ok message 
-                    message = {'text': 
-                                f'*Statut Frigo {frigo_name}* : OK, \t {time.strftime("%Y-%m-%d")} {time.strftime("%H:%M:%S")}.'}
-                    _ = send_chat(message, webhook)
-                    alerte_connect_sent, alerte_sent = False, False 
-                    tem_trigger, conn_trigger = False, False 
+        # update current status wrt current temperature 
+        if temperature is None : 
+            current_status = 'sensor_not_connected'
+        elif temperature >= self._max_temperature : 
+            current_status = 'high_temp'
+        else : 
+            current_status = 'ok'
+        self._current_status = current_status
+        logger.info(f'Status : {self._status_long_name[current_status]}')
+        # update last state and message if needed 
+        message = None 
+        alert_level = AlertLevel.LOW
 
-                thermo_status = 0 
-                # value to send to google sheet
-                value=[[frigo_name, str(temperature), str(max_temperature),
-                                    time.strftime("%Y-%m-%d"), time.strftime("%H:%M:%S"), 'OK']]
+        if self._last_state[current_status]['status'] is False : # first time status changes
+            self._last_state[current_status] = {'status': True, 'notif_sent': False, 'first_time': timestamp}
+            is_status_changed = True 
+        else : 
+            is_status_changed = False 
 
-            # temperature too high, send a chat message, update google sheet
-            elif temperature >= max_temperature :  # thermo_status == 1
-                if thermo_status != 1 : # status change
-                    start_time = time # datetime instance
-                    # alerte_sent = False 
-                thermo_status = 1 
-
-                if time - start_time < timedelta(seconds=delay) : 
-                    tem_trigger = False 
-                    logger.warning(f'Status : Temperature too high (>={max_temperature}°C)')
-                else : 
-                    tem_trigger = True 
-                    logger.warning(f'Status : Temperature too high (>={max_temperature}°C) for a long period {round(delay/60)} minutes.')
-                    if not alerte_sent : 
-                        message = create_message(sensor_name=frigo_name,
-                                    sensor_data={'temperature': temperature, 'time': time.strftime("%Y-%m-%d %H:%M:%S")},
-                                    max_temperature=max_temperature)
-                        alerte_sent = send_chat(message, webhook) # send chat until success
-
-                # value to send to google sheet
-                value=[[frigo_name, str(temperature), str(max_temperature), 
-                                            time.strftime("%Y-%m-%d"), time.strftime("%H:%M:%S"), 'Température élevée']]
-
-        # sensor not connected, update google sheet
-        elif temperature is None : # thermo_status == -1
-            logger.warning('Status : No connection to sensor')
-            conn_trigger = True 
-            if thermo_status != 2 or not alerte_connect_sent : # status change
-                # send chat message
-                message = {'text': f'*Alerte Frigo {frigo_name}* : pas de connexion entre le capteur et le Raspberry pi.'}
-                alerte_connect_sent = send_chat(message, webhook)
-                
-            value=[[frigo_name, str(temperature), str(max_temperature), 
-                                        time.strftime("%Y-%m-%d"), time.strftime("%H:%M:%S"), 'Pas de connexion au capteur']]
-            thermo_status = 2
+        if current_status == 'ok' : 
+            if is_status_changed : # first time status returns to ok
+                message = f'Statut Frigo {self._frigo_name} : OK, \t {timestamp_date}, {timestamp_time}.'
+                # update last state
+                self._last_state['high_temp'] = self._none_state
+                self._last_state['sensor_not_connected'] = self._none_state
         
-        # send info to google sheet
-        update_sheet(value=value, opts=opts, creds=None) 
+        elif current_status == 'high_temp' : 
+            if is_status_changed : 
+                self._last_state['ok'] = self._none_state
+            duration = timestamp - self._last_state['high_temp']['first_time']
+            if self._last_state['high_temp']['notif_sent'] is False and \
+                    duration >= timedelta(seconds=self._notif_delay) : 
+                message = f'ALERTE FRIGO {self._frigo_name} : température trop élevée depuis plus de {int(duration.total_seconds()/60)} minutes, actuelle à {temperature}°C, limite à {self._max_temperature}°C, \t {timestamp_date}, {timestamp_time}.'
+                alert_level = AlertLevel.HIGH
 
-        sleep(pause_time)
+        elif current_status == 'sensor_not_connected' : 
+            if is_status_changed : # first time status changes
+                self._last_state['ok'] = self._none_state
+                message = f'ALERTE FRIGO {self._frigo_name} : pas de connexion entre le capteur et le Raspberry pi.'
+        # send message 
+        if message is not None :
+            try : 
+                self._notifier.notify_alert(alert_level, message)
+                self._last_state[current_status]['notif_sent'] = True 
+                logger.info(f'Message is sent to chat group : {message}')
+            except Exception as e : 
+                logger.error(e)
+                logger.error('Error while sending message to chat group')
+            
+        try : 
+            # update google sheet 
+            self._notifier.log(self._frigo_name, self._sensor_id, temperature, self._max_temperature, 
+                    timestamp_date, timestamp_time, self._status_long_name[current_status])
+            logger.info('Google sheet is updated')
+        except Exception as e : 
+            logger.error(e)
+            logger.error('Error while updating google sheet')
+        
+        self._temperature = temperature
+        self._timestamp = timestamp
+            
+    def run(self):
+        while True :
+            # get periodical sensor information
+            self._update()
+            sleep(self._pause_time)
+
 
 if __name__ == '__main__' :
-    main()
+    # main()
+    try : 
+        sensor = BME280()
+        notifier = GoogleNotifier()
+        thermo = ThermoConnecte(sensor=sensor, notifier=notifier)
+
+        thermo.run()
+    except Exception as e : 
+        logger.error(e)
