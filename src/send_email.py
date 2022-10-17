@@ -17,6 +17,37 @@ logger = logging.getLogger(__name__)
 SCOPES = ['https://mail.google.com/']
 
 
+
+# def main_email() :
+
+#     opts = parse_opts()      
+    # sensor_name = opts.get('sensor_name', None)
+    # address = opts.get('address', None)
+    # max_temperature = opts.get('max_temperature', None)
+    # pause_time = opts.get('pause_time', None)
+#     # get periodical sensor information 
+#     config = get_temperature.get_config(address)
+#     while True :
+#         outputs = get_temperature.read_bme280(**config)
+#         temperature = outputs['temperature']
+#         if temperature >= max_temperature :
+#             time = outputs['time']
+#             logger.warning(f'{time} : Current temperature ({temperature}°C) is higher than normal ({max_temperature}°C).')
+
+#             # Send email
+#             sender_email = ''
+#             receiver_email = '' 
+#             # TODO: change sender and receiver
+#             message = create_email(sender_email, 
+#                         receiver_email, 
+#                         sensor_name=sensor_name, 
+#                         sensor_data={'temperature': temperature, 'time': time},
+#                         max_temperature=max_temperature)
+#             send_secure_gmail(message)
+#             logger.info(f'De {sender_email}')
+#             logger.info(f'A {receiver_email}')
+#         sleep(pause_time)
+
 def send_secure_gmail(message):
     """Send secure email with Gmail API.    """
 
