@@ -82,7 +82,21 @@ class ThermoConnecte() :
 
         if current_status == 'ok' : 
             if is_status_changed : # first time status returns to ok
-                message = f'Statut Frigo {self._frigo_name} : OK, \t {timestamp_date}, {timestamp_time}.'
+                # send ok message only if after an alert was sent
+                if self._last_state['high_temp']['notif_sent'] is True : 
+                    # add info about incident duration
+                    duration = timestamp - self._last_state['high_temp']['first_time']
+                    msg_high_temp = f'Température trop élévée pendant environ {int(duration.total_seconds() / 60)} minutes.'
+                    message = f'Statut Frigo {self._frigo_name} : OK, \t {timestamp_date}, {timestamp_time}. {msg_high_temp}'
+
+                elif self._last_state['sensor_not_connected']['notif_sent'] is True : 
+                    # add info about incident duration
+                    duration = timestamp - self._last_state['sensor_not_connected']['first_time']
+                    msg_not_connected = f'Connexion Raspberry - capteur perdue pendant environ {int(duration.total_seconds() / 60)} minutes.'
+                    message = f'Statut Frigo {self._frigo_name} : OK, \t {timestamp_date}, {timestamp_time}. {msg_not_connected}'
+                
+                else : 
+                    message = None 
                 # update last state
                 self._last_state['high_temp'] = self._none_state
                 self._last_state['sensor_not_connected'] = self._none_state
@@ -90,8 +104,8 @@ class ThermoConnecte() :
         elif current_status == 'high_temp' : 
             if is_status_changed : 
                 self._last_state['ok'] = self._none_state
-            duration = timestamp - self._last_state['high_temp']['first_time']
-            if self._last_state['high_temp']['notif_sent'] is False and \
+            duration = timestamp - self._last_state[current_status]['first_time']
+            if self._last_state[current_status]['notif_sent'] is False and \
                     duration >= timedelta(seconds=self._notif_delay) : 
                 message = f'ALERTE FRIGO {self._frigo_name} : température trop élevée depuis plus de {int(duration.total_seconds()/60)} minutes, actuelle à {temperature}°C, limite à {self._max_temperature}°C, \t {timestamp_date}, {timestamp_time}.'
                 alert_level = AlertLevel.HIGH
@@ -103,15 +117,14 @@ class ThermoConnecte() :
         # send message 
         if message is not None :
             try : 
-                self._notifier.notify_alert(alert_level, message)
-                self._last_state[current_status]['notif_sent'] = True 
+                self._last_state[current_status]['notif_sent'] = self._notifier.notify_alert(alert_level, message) 
                 logger.info(f'Message is sent to chat group : {message}')
             except Exception as e : 
                 logger.error(e)
                 logger.error('Error while sending message to chat group')
             
         try : 
-            # update google sheet 
+            # update google sheet # TODO-xuan: add notif_sent status 
             self._notifier.log(self._frigo_name, self._sensor_id, temperature, self._max_temperature, 
                     timestamp_date, timestamp_time, self._status_long_name[current_status])
             logger.info('Google sheet is updated')
