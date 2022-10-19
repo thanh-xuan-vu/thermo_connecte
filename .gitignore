@@ -1,5 +1,9 @@
 env
 **/__pycache__
-token/*
-test
+config/*
+config*
+!test
 **/*.log
+test/integration/config/*
+*.jpeg
+*.conf
