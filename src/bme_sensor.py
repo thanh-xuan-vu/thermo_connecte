@@ -21,12 +21,14 @@ class BME280(Sensor) :
             logger.error(f'Error reading config for BME280 sensor')
             raise e 
 
-    def get_config(self, address=0x77):
+    def get_config(self, address="0x77"):
         '''Get calibration config of BME280 from its address'''
         port = 1
         bus = smbus2.SMBus(port)
         time.sleep(1)
         
+        if isinstance(address, str) : 
+            address = int(address, 16)
         calibration_params = bme280.load_calibration_params(bus, address)
         # logger.info('Configuration: ', bus, address, calibration_params)
         return {'bus':bus, 'address':address, 'calibration_params':calibration_params}
@@ -40,7 +42,7 @@ class BME280(Sensor) :
         calibration_params = self._config['calibration_params']
         try : 
             data = bme280.sample(bus, address, calibration_params)
-            outputs = {'time':data.timestamp, 'temperature':round(data.temperature, ndigits=1)}
+            outputs = {'time':data.timestamp.astimezone(), 'temperature':round(data.temperature, ndigits=1)}
         except Exception as e : 
             logger.error('Cannot connect to sensor')
             logger.error(e)
